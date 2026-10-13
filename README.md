@@ -53,15 +53,18 @@ Begitu aplikasi dibuka, Anda langsung melihat:
 
 ### 📚 Halaman per mata kuliah
 
-Klik sebuah card untuk membuka halamannya, berisi tiga grup:
+Klik sebuah card untuk membuka halamannya, berisi empat grup:
 
 | Grup | Isi |
 |---|---|
 | 📄 **Materi** | File materi kuliah (PDF, slide, dataset, …) |
 | ✅ **Tugas** | Daftar tugas (to-do) mata kuliah itu + berkas tugasnya |
 | 📝 **Catatan** | Catatan pribadi berformat Markdown |
+| 📁 **Lainnya** | Tempat **sementara** untuk file yang belum jelas masuk ke mana |
 
-File lama yang masih tercampur di folder mata kuliah muncul di grup **📁 Lainnya** dan bisa dipindahkan ke Materi/Tugas dengan satu klik. Breadcrumb di atas halaman (`Dashboard › Mata Kuliah › Catatan`) memudahkan berpindah naik-turun.
+**Bingung menentukan sebuah file masuk Materi, Tugas, atau Catatan?** Taruh dulu di **Lainnya** (lewat tombol **Tambah file**, zona seret & lepas, atau tombol **→ Lainnya** di Inbox). Kapan pun Anda sudah yakin, pindahkan dengan satu klik: **→ Materi**, **→ Tugas**, atau **→ Catatan** (khusus file `.md`). File lama yang masih tercampur langsung di folder mata kuliah juga otomatis muncul di sini, jadi tidak ada yang tersembunyi.
+
+Breadcrumb di atas halaman (`Dashboard › Mata Kuliah › Catatan`) memudahkan berpindah naik-turun.
 
 <p align="center">
   <img src="docs/images/course.png" alt="Halaman mata kuliah dengan grup Materi, Tugas, Catatan, dan Lainnya" width="100%">
@@ -69,18 +72,18 @@ File lama yang masih tercampur di folder mata kuliah muncul di grup **📁 Lainn
 
 ### 🖱️ Seret & lepas — tanpa membuka folder
 
-Seret file dari mana saja ke jendela aplikasi saat membuka sebuah mata kuliah, lalu lepaskan di zona **Materi** atau **Tugas**. File disalin ke subfolder yang benar.
+Seret file dari mana saja ke jendela aplikasi saat membuka sebuah mata kuliah, lalu lepaskan di zona **Materi**, **Tugas**, atau **Lainnya** (untuk file yang belum yakin). File disalin ke subfolder yang benar.
 
 <p align="center">
-  <img src="docs/images/drag-drop.png" alt="Zona seret dan lepas untuk Materi dan Tugas" width="100%">
+  <img src="docs/images/drag-drop.png" alt="Zona seret dan lepas untuk Materi, Tugas, dan Lainnya" width="100%">
 </p>
 
 ### 📥 Inbox untuk file yang menumpuk
 
-Inbox menampilkan file yang tergeletak di Desktop (atau folder lain yang Anda tambahkan, misalnya Downloads). Pilih mata kuliah tujuan, lalu klik **→ Materi** atau **→ Tugas** — file *dipindahkan*, jadi Desktop Anda kembali bersih.
+Inbox menampilkan file yang tergeletak di Desktop (atau folder lain yang Anda tambahkan, misalnya Downloads). Pilih mata kuliah tujuan, lalu klik **→ Materi**, **→ Tugas**, atau **→ Lainnya** — file *dipindahkan*, jadi Desktop Anda kembali bersih.
 
 <p align="center">
-  <img src="docs/images/inbox.png" alt="Inbox berisi file dari Desktop dengan tombol pindah ke Materi atau Tugas" width="100%">
+  <img src="docs/images/inbox.png" alt="Inbox berisi file dari Desktop dengan tombol pindah ke Materi, Tugas, atau Lainnya" width="100%">
 </p>
 
 ### 📝 Catatan pribadi (Markdown)
@@ -102,16 +105,20 @@ Atur jadwal mingguan: mata kuliah, hari, jam mulai/selesai, dan ruang (opsional)
   </tr>
 </table>
 
-### 🎨 Lainnya
+### 🎨 Kenyamanan lain
 
+- **Ikon sendiri.** Di **⚙️ Pengaturan → Ikon aplikasi** Anda bisa memilih gambar (PNG, JPG, atau ICO) sebagai ikon yang tampil di sidebar dan jendela aplikasi, misalnya logo kampus Anda. Gambar disalin ke profil Windows Anda, bukan ke folder proyek, jadi tidak ikut ter-commit. Tombol **Kembalikan** memulihkan ikon bawaan.
 - **Tema terang & gelap** otomatis mengikuti pengaturan Windows.
 - **Sidebar bisa disembunyikan** (tombol `‹` atau <kbd>Ctrl</kbd>+<kbd>B</kbd>) untuk ruang kerja lebih luas. Pilihan Anda diingat.
 - **Hapus aman**: menghapus file/catatan memindahkannya ke Recycle Bin, bukan menghapus permanen.
 - **Sinkron otomatis** dengan perubahan di Explorer: jika Anda menambah file lewat Explorer, tampilan aplikasi ikut diperbarui.
 
-<p align="center">
-  <img src="docs/images/dashboard-dark.png" alt="Dashboard dengan tema gelap" width="100%">
-</p>
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/settings.png" alt="Pengaturan: ikon aplikasi, folder kuliah, dan folder Inbox"></td>
+    <td width="50%"><img src="docs/images/dashboard-dark.png" alt="Dashboard dengan tema gelap"></td>
+  </tr>
+</table>
 
 ## Panduan penggunaan
 
@@ -137,9 +144,11 @@ Pilih salah satu cara:
 
 | Cara | Langkah |
 |---|---|
-| **Seret & lepas** | Buka mata kuliah → seret file ke jendela → lepaskan di zona *Materi* atau *Tugas* |
+| **Seret & lepas** | Buka mata kuliah → seret file ke jendela → lepaskan di zona *Materi*, *Tugas*, atau *Lainnya* |
 | **Tombol** | Di grup yang diinginkan, klik **＋ Tambah file** dan pilih file |
-| **Inbox** | Buka **📥 Inbox** → pilih mata kuliah tujuan → klik **→ Materi** / **→ Tugas** |
+| **Inbox** | Buka **📥 Inbox** → pilih mata kuliah tujuan → klik **→ Materi** / **→ Tugas** / **→ Lainnya** |
+
+Belum yakin file itu termasuk apa? Taruh di **Lainnya**, lalu pindahkan nanti dengan tombol **→ Materi / → Tugas / → Catatan** di baris file tersebut.
 
 ### 5. Catat saat kuliah berlangsung
 
@@ -158,6 +167,7 @@ Kuliah/                                  ← folder kuliah yang Anda pilih
 ├── [Matkul] Statistika Terapan/
 │   ├── Materi/                          ← file materi
 │   ├── Tugas/                           ← berkas tugas
+│   ├── Lainnya/                         ← file sementara yang belum dipilah
 │   └── Catatan/
 │       ├── 2026-10-13.md                ← catatan Markdown
 │       └── Rangkuman Regresi Linear.md
@@ -167,7 +177,7 @@ Kuliah/                                  ← folder kuliah yang Anda pilih
     └── data.json                        ← daftar tugas (to-do) & jadwal
 ```
 
-Pengaturan aplikasi (folder kuliah dan folder Inbox) disimpan terpisah di `%APPDATA%\asisten-kuliah\settings.json`.
+Pengaturan aplikasi (folder kuliah dan folder Inbox) disimpan terpisah di `%APPDATA%\asisten-kuliah\settings.json`, dan ikon kustom (jika ada) di `%APPDATA%\asisten-kuliah\custom-icon.png`.
 
 Karena semuanya berupa file, Anda bebas menaruh folder kuliah di OneDrive/Dropbox/Google Drive untuk sinkronisasi dan backup, atau memasukkannya ke Git.
 
@@ -241,6 +251,7 @@ Electron + HTML/CSS/JavaScript polos. Tanpa framework UI, tanpa bundler, hanya d
 - Editor catatan berupa teks polos (belum ada pratinjau Markdown).
 - Belum ada notifikasi pengingat untuk tenggat atau jadwal kuliah.
 - Antarmuka hanya tersedia dalam Bahasa Indonesia.
+- Ikon kustom mengubah ikon di sidebar dan jendela aplikasi. Ikon shortcut di Start Menu dan file installer tetap ikon bawaan.
 - Jadwal berulang mingguan saja (belum mendukung jadwal per tanggal tertentu).
 
 Ide dan perbaikan dipersilakan lewat *issue* atau *pull request*.

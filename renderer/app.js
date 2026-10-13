@@ -5,10 +5,12 @@ const $ =(sel) => document.querySelector(sel);
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const SECTIONS = ['Materi', 'Tugas'];
+const SECTIONS = ['Materi', 'Tugas']; // drop zones / simple destinations
+const DESTS = ['Materi', 'Tugas', 'Lainnya']; // where an unsorted file can go from the Inbox
 
 const S = {
   settings: null,
+  icon: { custom: false, dataUrl: null }, // custom app icon chosen in Settings
   courses: [],
   todos: [],
   schedule: [], // { id, course, day (0=Minggu..6), start 'HH:MM', end 'HH:MM', room }
@@ -106,6 +108,29 @@ function askText(title, placeholder, value = '') {
     dlg.onclose = () => resolve(dlg.returnValue === 'ok' ? dlg.querySelector('input').value.trim() : null);
     dlg.returnValue = '';
     dlg.showModal();
+    const input = dlg.querySelector('input');
+    input.focus();
+    input.select();
+  });
+}
+
+// In-app replacement for window.confirm(): the native box can leave text fields unresponsive on Windows.
+function askConfirm(message, okLabel = 'Hapus') {
+  return new Promise((resolve) => {
+    const dlg = $('#dlg');
+    dlg.innerHTML = `
+      <form method="dialog">
+        <h2>Konfirmasi</h2>
+        <p class="dlg-text">${esc(message)}</p>
+        <div class="dlg-actions">
+          <button type="button" class="btn" data-act="dlg-close" autofocus>Batal</button>
+          <button class="btn danger-solid" value="ok">${esc(okLabel)}</button>
+        </div>
+      </form>`;
+    dlg.onclose = () => resolve(dlg.returnValue === 'ok');
+    dlg.returnValue = '';
+    dlg.showModal();
+    dlg.querySelector('[data-act=dlg-close]').focus();
   });
 }
 
@@ -114,6 +139,14 @@ function renderSettings() {
   const s = S.settings;
   dlg.innerHTML = `
     <h2>Pengaturan</h2>
+    <div class="set-label">Ikon aplikasi</div>
+    <div class="set-row">
+      <img class="icon-preview" src="${esc(S.icon.dataUrl || 'logo.png')}" alt="">
+      <span class="path">${S.icon.custom ? 'Ikon kustom' : 'Ikon bawaan'}
+        <span class="field-hint">Tampil di sidebar dan jendela aplikasi. Format PNG, JPG, atau ICO.</span></span>
+      <button class="btn small" data-act="icon-pick">Pilih gambar…</button>
+      ${S.icon.custom ? '<button class="btn small" data-act="icon-reset">Kembalikan</button>' : ''}
+    </div>
     <div class="set-label">Folder kuliah</div>
     <div class="set-row">
       <span class="path">${esc(s.root || '(belum dipilih)')}</span>
@@ -141,6 +174,7 @@ function openSettings() {
 
 async function loadAll() {
   S.settings = await api.getSettings();
+  S.icon = await api.getIcon();
   if (!S.settings.root) return render();
   const data = await api.loadData();
   S.todos = data.todos;
@@ -230,7 +264,7 @@ function renderSidebar() {
   const badge = (n, quiet) => (n ? `<span class="badge ${quiet ? 'quiet' : ''}">${n}</span>` : '');
 
   $('#sidebar').innerHTML = `
-    <div class="brand"><img src="logo.png" alt="">Asisten Kuliah</div>
+    <div class="brand"><img src="${esc(S.icon.dataUrl || 'logo.png')}" alt="">Asisten Kuliah</div>
     ${navBtn('data-view="home"', v.type === 'home', '🏠 Dashboard', badge(openCount(), true))}
     ${navBtn('data-view="schedule"', v.type === 'schedule', '📅 Jadwal', badge(todayClasses().length, true))}
     ${navBtn('data-view="inbox"', v.type === 'inbox', '📥 Inbox', badge(S.inbox.length))}
@@ -255,7 +289,7 @@ function renderMain() {
   if (!S.settings) return (main.innerHTML = '');
   if (!S.settings.root) {
     main.innerHTML = `<div class="welcome">
-      <img src="logo.png" alt="">
+      <img src="${esc(S.icon.dataUrl || 'logo.png')}" alt="">
       <h1>Selamat datang di Asisten Kuliah</h1>
       <p>Pilih folder tempat Anda menyimpan file kuliah. Setiap subfolder yang namanya diawali
         <code>[Matkul] </code> akan dikenali sebagai satu mata kuliah. Anda juga bisa menambah mata kuliah baru dari dalam aplikasi.</p>
@@ -500,6 +534,9 @@ function viewHome() {
     <section class="dash"><h2>Mata Kuliah</h2>${courseCards()}</section>`;
 }
 
+// A file in "Lainnya" can be sorted into Materi or Tugas; Markdown files can also become a Catatan.
+const moveTargets = (f) => [...SECTIONS, ...(!f.isDir && /.md$/i.test(f.name) ? ['Catatan'] : [])];
+
 function fileRow(f, { moves = false } = {}) {
   const meta = [f.isDir ? '' : fmtSize(f.size), fmtDate(f.mtime)].filter(Boolean).join(' · ');
   const p = esc(f.path);
@@ -509,7 +546,7 @@ function fileRow(f, { moves = false } = {}) {
       <span class="meta">${meta}</span>
       <span class="actions">
         ${moves
-          ? SECTIONS.map((s) => `<button class="btn small" data-act="move" data-path="${p}" data-section="${s}">→ ${s}</button>`).join('')
+          ? moveTargets(f).map((s) => `<button class="btn small" data-act="move" data-path="${p}" data-section="${s}">→ ${s}</button>`).join('')
           : ''}
         <button class="btn small" data-act="reveal" data-path="${p}" title="Tampilkan di Explorer">Lokasi</button>
         <button class="btn small danger" data-act="trash" data-path="${p}" data-name="${esc(f.name)}" title="Hapus (ke Recycle Bin)">🗑</button>
@@ -582,11 +619,11 @@ function viewCourse() {
       ? `<ul class="file-list">${files.Catatan.map(noteRow).join('')}</ul>`
       : '<div class="group-empty">Belum ada catatan. Catatan disimpan sebagai file .md di folder Catatan.</div>');
 
-  const lainnya = files.Lainnya.length
-    ? group('📁 Lainnya', files.Lainnya.length, '',
-        `<div class="subhead">File yang belum dikelompokkan. Pindahkan ke Materi atau Tugas.</div>
-         <ul class="file-list">${files.Lainnya.map((f) => fileRow(f, { moves: true })).join('')}</ul>`)
-    : '';
+  const lainnya = group('📁 Lainnya', files.Lainnya.length, addFiles('Lainnya'),
+    `<div class="subhead-note">Tempat file sementara yang belum jelas masuk Materi, Tugas, atau Catatan. Pindahkan kapan saja dengan tombol di kanan.</div>
+     ${files.Lainnya.length
+       ? `<ul class="file-list">${files.Lainnya.map((f) => fileRow(f, { moves: true })).join('')}</ul>`
+       : '<div class="group-empty">Belum ada file. Klik <b>Tambah file</b> atau seret file ke zona <b>Lainnya</b>.</div>'}`);
 
   return `${breadcrumb([{ label: c.title }])}
     <div class="page-head">
@@ -636,7 +673,7 @@ function inboxRow(f) {
       <button class="name" data-act="open" data-path="${p}" title="${esc(f.name)}">${esc(f.name)}</button>
       <span class="meta">${esc(f.source)} · ${fmtSize(f.size)} · ${fmtDate(f.mtime)}</span>
       <span class="actions">
-        ${SECTIONS.map((s) => `<button class="btn small primary" data-act="inbox-move" data-path="${p}" data-section="${s}">→ ${s}</button>`).join('')}
+        ${DESTS.map((s) => `<button class="btn small primary" data-act="inbox-move" data-path="${p}" data-section="${s}">→ ${s}</button>`).join('')}
         <button class="btn small danger" data-act="trash" data-path="${p}" data-name="${esc(f.name)}" title="Hapus (ke Recycle Bin)">🗑</button>
       </span>
     </li>`;
@@ -726,7 +763,7 @@ const actions = {
   // From a row on the course page (data-name) or from the open editor.
   'note-del': run(async (el) => {
     const name = el.dataset.name || S.note?.name;
-    if (!name || !confirm(`Pindahkan catatan "${noteTitle(name)}" ke Recycle Bin?`)) return;
+    if (!name || !(await askConfirm(`Pindahkan catatan "${noteTitle(name)}" ke Recycle Bin?`, 'Pindahkan'))) return;
     if (S.note?.name === name) {
       clearTimeout(noteTimer);
       S.noteDirty = false;
@@ -740,7 +777,7 @@ const actions = {
   'sched-add': () => openScheduleDialog(),
   'sched-edit': (el) => openScheduleDialog(el.dataset.id),
   'sched-del': run(async (el) => {
-    if (!confirm('Hapus jadwal ini?')) return;
+    if (!(await askConfirm('Hapus jadwal ini?'))) return;
     S.schedule = S.schedule.filter((s) => s.id !== el.dataset.id);
     render();
     await persist();
@@ -752,7 +789,7 @@ const actions = {
   'open-course': run(() => api.openPath(S.files.path)),
 
   trash: run(async (el) => {
-    if (!confirm(`Pindahkan "${el.dataset.name}" ke Recycle Bin?`)) return;
+    if (!(await askConfirm(`Pindahkan "${el.dataset.name}" ke Recycle Bin?`, 'Pindahkan'))) return;
     await api.trashPath(el.dataset.path);
     await refresh();
   }),
@@ -797,6 +834,16 @@ const actions = {
 
   settings: openSettings,
   'dlg-close': () => $('#dlg').close('cancel'),
+  'icon-pick': run(async () => {
+    S.icon = await api.pickIcon();
+    renderSettings();
+    render();
+  }),
+  'icon-reset': run(async () => {
+    S.icon = await api.resetIcon();
+    renderSettings();
+    render();
+  }),
   'set-root': run(async () => {
     S.settings = await api.pickRoot();
     renderSettings();

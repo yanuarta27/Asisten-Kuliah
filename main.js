@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
@@ -6,7 +6,9 @@ const fsp = fs.promises;
 const COURSE_PREFIX = '[Matkul] ';
 const SECTIONS = ['Materi', 'Tugas'];
 const NOTES_DIR = 'Catatan';
-const RESERVED = [...SECTIONS, NOTES_DIR]; // subfolders the app owns inside a course folder
+const OTHER_DIR = 'Lainnya'; // holding area for files not yet sorted into Materi / Tugas / Catatan
+const RESERVED = [...SECTIONS, NOTES_DIR, OTHER_DIR]; // subfolders the app owns inside a course folder
+const TARGETS = [...SECTIONS, OTHER_DIR, NOTES_DIR]; // where files may be added or moved to
 const DATA_DIR = '.asisten-kuliah';
 const DATA_FILE = 'data.json';
 const IGNORED = /^(\.|~\$|desktop\.ini$|thumbs\.db$)|\.(lnk|tmp|crdownload|part|ini)$/i;
@@ -73,8 +75,15 @@ function courseDir(folder) {
 function sectionDir(folder, section) {
   const base = courseDir(folder);
   if (!section) return base;
-  if (!SECTIONS.includes(section)) throw new Error('Bagian tidak valid.');
+  if (!TARGETS.includes(section)) throw new Error('Bagian tidak valid.');
   return path.join(base, section);
+}
+
+// Catatan only ever holds Markdown notes; anything else would silently vanish from the list.
+function assertFitsSection(section, file) {
+  if (section === NOTES_DIR && !/\.md$/i.test(file)) {
+    throw new Error('Hanya file .md yang bisa dimasukkan ke Catatan.');
+  }
 }
 
 async function uniquePath(dir, name) {
@@ -124,6 +133,20 @@ async function listEntries(dir, { filesOnly = false, exclude = [] } = {}) {
   return items.sort((a, b) => b.mtime - a.mtime);
 }
 
+// Everything shown on a course page. "Lainnya" merges the Lainnya/ folder with any loose files
+// left directly in the course folder, so nothing is hidden.
+async function listGroups(base) {
+  const [Materi, Tugas, Catatan, inOtherDir, loose] = await Promise.all([
+    listEntries(path.join(base, 'Materi')),
+    listEntries(path.join(base, 'Tugas')),
+    listEntries(path.join(base, NOTES_DIR), { filesOnly: true }).then((l) => l.filter((n) => /\.md$/i.test(n.name))),
+    listEntries(path.join(base, OTHER_DIR)),
+    listEntries(base, { exclude: RESERVED }),
+  ]);
+  const Lainnya = [...inOtherDir, ...loose].sort((a, b) => b.mtime - a.mtime);
+  return { Materi, Tugas, Catatan, Lainnya };
+}
+
 async function listCourses() {
   const root = requireRoot();
   const dirents = await fsp.readdir(root, { withFileTypes: true });
@@ -132,12 +155,7 @@ async function listCourses() {
       .filter((d) => d.isDirectory() && d.name.startsWith(COURSE_PREFIX))
       .map(async (d) => {
         const base = path.join(root, d.name);
-        const [Materi, Tugas, Catatan, Lainnya] = await Promise.all([
-          listEntries(path.join(base, 'Materi')),
-          listEntries(path.join(base, 'Tugas')),
-          listEntries(path.join(base, NOTES_DIR), { filesOnly: true }).then((l) => l.filter((n) => /\.md$/i.test(n.name))),
-          listEntries(base, { exclude: RESERVED }),
-        ]);
+        const { Materi, Tugas, Catatan, Lainnya } = await listGroups(base);
         return {
           folder: d.name,
           title: d.name.slice(COURSE_PREFIX.length),
@@ -151,13 +169,7 @@ async function listCourses() {
 
 async function listCourseFiles(folder) {
   const base = courseDir(folder);
-  const [Materi, Tugas, Catatan, Lainnya] = await Promise.all([
-    listEntries(path.join(base, 'Materi')),
-    listEntries(path.join(base, 'Tugas')),
-    listEntries(path.join(base, NOTES_DIR), { filesOnly: true }).then((l) => l.filter((n) => /\.md$/i.test(n.name))),
-    listEntries(base, { exclude: RESERVED }),
-  ]);
-  return { path: base, Materi, Tugas, Catatan, Lainnya };
+  return { path: base, ...(await listGroups(base)) };
 }
 
 // ---------- Notes (Markdown files in <course>/Catatan) ----------
@@ -247,13 +259,77 @@ function stopWatching() {
 
 // ---------- IPC ----------
 
+// Windows quirk: after a native dialog closes, text fields in the page can stay unresponsive until the
+// window is focused again. Always go through this wrapper instead of calling dialog.showOpenDialog directly.
+async function openDialog(options) {
+  try {
+    return await dialog.showOpenDialog(win, options);
+  } finally {
+    if (win && !win.isDestroyed()) {
+      win.blur();
+      win.focus();
+      win.webContents.focus();
+    }
+  }
+}
+
+// ---------- Custom app icon (stored in the user's profile, never in the repo) ----------
+
+const iconFile = () => path.join(app.getPath('userData'), 'custom-icon.png');
+const defaultIconPath = () => path.join(__dirname, 'build', 'icon.png');
+
+function loadCustomIcon() {
+  try {
+    const img = nativeImage.createFromPath(iconFile());
+    return img.isEmpty() ? null : img;
+  } catch {
+    return null;
+  }
+}
+
+// Small data URL for the sidebar / welcome screen, or null when the default icon is in use.
+function iconInfo() {
+  const img = loadCustomIcon();
+  if (!img) return { custom: false, dataUrl: null };
+  const { width, height } = img.getSize();
+  const scale = Math.min(1, 128 / Math.max(width, height));
+  const small = scale < 1 ? img.resize({ width: Math.round(width * scale), height: Math.round(height * scale), quality: 'best' }) : img;
+  return { custom: true, dataUrl: small.toDataURL() };
+}
+
 function registerIpc() {
   const h = (name, fn) => ipcMain.handle(name, (_e, ...args) => fn(...args));
 
   h('settings:get', () => ({ ...settings }));
 
+  h('icon:get', iconInfo);
+
+  h('icon:pick', async () => {
+    const r = await openDialog({
+      title: 'Pilih ikon aplikasi',
+      properties: ['openFile'],
+      filters: [{ name: 'Gambar', extensions: ['png', 'jpg', 'jpeg', 'ico'] }],
+    });
+    if (r.canceled || !r.filePaths[0]) return iconInfo();
+    const img = nativeImage.createFromPath(r.filePaths[0]);
+    if (img.isEmpty()) throw new Error('Gambar tidak bisa dibaca. Gunakan PNG, JPG, atau ICO.');
+    const { width, height } = img.getSize();
+    const scale = Math.min(1, 512 / Math.max(width, height));
+    const fit = scale < 1 ? img.resize({ width: Math.round(width * scale), height: Math.round(height * scale), quality: 'best' }) : img;
+    await fsp.mkdir(path.dirname(iconFile()), { recursive: true });
+    await fsp.writeFile(iconFile(), fit.toPNG());
+    win?.setIcon(fit);
+    return iconInfo();
+  });
+
+  h('icon:reset', async () => {
+    await fsp.rm(iconFile(), { force: true });
+    win?.setIcon(defaultIconPath());
+    return iconInfo();
+  });
+
   h('settings:pickRoot', async () => {
-    const r = await dialog.showOpenDialog(win, {
+    const r = await openDialog({
       title: 'Pilih folder kuliah',
       properties: ['openDirectory'],
       defaultPath: settings.root || app.getPath('desktop'),
@@ -266,7 +342,7 @@ function registerIpc() {
   });
 
   h('settings:addInbox', async () => {
-    const r = await dialog.showOpenDialog(win, {
+    const r = await openDialog({
       title: 'Tambah folder Inbox',
       properties: ['openDirectory'],
       defaultPath: app.getPath('desktop'),
@@ -337,12 +413,13 @@ function registerIpc() {
   h('notes:trash', ({ folder, name }) => shell.trashItem(path.resolve(notePath(folder, name))));
 
   h('files:pick', async () => {
-    const r = await dialog.showOpenDialog(win, { title: 'Pilih file', properties: ['openFile', 'multiSelections'] });
+    const r = await openDialog({ title: 'Pilih file', properties: ['openFile', 'multiSelections'] });
     return r.canceled ? [] : r.filePaths;
   });
 
   h('files:add', async ({ folder, section, paths }) => {
     const destDir = sectionDir(folder, section);
+    for (const src of paths) assertFitsSection(section, String(src));
     await fsp.mkdir(destDir, { recursive: true });
     for (const src of paths) {
       if (typeof src !== 'string' || !path.isAbsolute(src)) continue;
@@ -354,6 +431,7 @@ function registerIpc() {
   h('files:move', async ({ src, folder, section }) => {
     assertAllowed(src);
     const destDir = sectionDir(folder, section);
+    assertFitsSection(section, src);
     await fsp.mkdir(destDir, { recursive: true });
     if (path.resolve(path.dirname(src)) === path.resolve(destDir)) return;
     await moveEntry(src, await uniquePath(destDir, path.basename(src)));
@@ -390,7 +468,7 @@ function createWindow() {
     show: false,
     backgroundColor: '#f6f7fb',
     title: 'Asisten Kuliah',
-    icon: path.join(__dirname, 'build', 'icon.png'),
+    icon: loadCustomIcon() || defaultIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('api', {
   pickRoot: call('settings:pickRoot'),
   addInboxDir: call('settings:addInbox'),
   removeInboxDir: call('settings:removeInbox'),
+  getIcon: call('icon:get'),
+  pickIcon: call('icon:pick'),
+  resetIcon: call('icon:reset'),
 
   listCourses: call('courses:list'),
   createCourse: call('courses:create'),
