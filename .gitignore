@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.exe
+*.blockmap
+builder-debug.yml
+
+# Local tooling / editor state
+.claude/
+.vscode/
+.idea/
+
+# OS junk
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Personal files that must never be committed
+.env
+.env.*
+*.local.json

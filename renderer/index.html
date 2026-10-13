@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Asisten Kuliah</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar"></aside>
+    <main id="main"></main>
+  </div>
+  <button id="side-toggle" title="Sembunyikan sidebar (Ctrl+B)" aria-label="Tampilkan atau sembunyikan sidebar">‹</button>
+  <div id="overlay" hidden>
+    <div class="zone" data-section="Materi"><span>Letakkan di <b>Materi</b></span></div>
+    <div class="zone" data-section="Tugas"><span>Letakkan di <b>Tugas</b></span></div>
+  </div>
+  <dialog id="dlg"></dialog>
+  <div id="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
